@@ -2,7 +2,7 @@ use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModi
 use std::io;
 
 mod terminal;
-use terminal::Terminal;
+use terminal::{Position, Size, Terminal};
 
 pub struct Editor {
     should_quit: bool, // we don't have to declare that we want a mutatable field
@@ -50,22 +50,24 @@ impl Editor {
         Terminal::hide_cursor()?;
         if self.should_quit {
             Terminal::clear_screen()?;
-            print!("Goodbye.\r\n");
+            Terminal::print("Goodbye.\r\n")?;
         } else {
             Self::draw_rows()?;
-            Terminal::move_cursor_to(0, 0)?;
+            Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
         }
         Terminal::show_cursor()?;
+        Terminal::flush()?;
         Ok(())
     }
 
     fn draw_rows() -> Result<(), io::Error> {
-        let rows = Terminal::size()?.1; // ei the height
+        let Size { height, .. } = Terminal::size()?;
 
-        for row in 0..rows {
-            print!("~");
-            if row + 1 < rows {
-                print!("\r\n");
+        for row in 0..height {
+            Terminal::clear_line()?;
+            Terminal::print("~")?;
+            if row + 1 < height {
+                Terminal::print("\r\n")?;
             }
         }
 
