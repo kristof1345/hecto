@@ -1,19 +1,21 @@
 use crossterm::cursor::{Hide, MoveTo, Show};
-use crossterm::queue;
 use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
+use crossterm::{queue, Command};
+
+use core::fmt::Display;
 use std::io::{self, stdout, Write};
 
 pub struct Terminal;
 
 pub struct Size {
-    pub width: u16,
-    pub height: u16,
+    pub width: usize,
+    pub height: usize,
 }
 
 pub struct Position {
-    pub x: u16,
-    pub y: u16,
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Terminal {
@@ -32,43 +34,51 @@ impl Terminal {
     }
 
     pub fn clear_screen() -> Result<(), io::Error> {
-        queue!(stdout(), Clear(ClearType::All))?;
+        Self::queue_command(Clear(ClearType::All))?;
         // queue!(stdout(), Clear(ClearType::Purge)?; // don't delete - clears history - only commented it out for debug purposes
         Ok(())
     }
 
     pub fn clear_line() -> Result<(), io::Error> {
-        queue!(stdout(), Clear(ClearType::CurrentLine))?;
+        Self::queue_command(Clear(ClearType::CurrentLine))?;
         Ok(())
     }
 
     pub fn move_cursor_to(position: Position) -> Result<(), io::Error> {
-        queue!(stdout(), MoveTo(position.x, position.y))?;
+        Self::queue_command(MoveTo(position.x as u16, position.y as u16))?;
         Ok(())
     }
 
     pub fn size() -> Result<Size, io::Error> {
-        let (width, height) = size()?;
+        let (width_u16, height_u16) = size()?;
+        let width = width_u16 as usize;
+        let height = height_u16 as usize;
+
         Ok(Size { width, height })
     }
 
     pub fn hide_cursor() -> Result<(), io::Error> {
-        queue!(stdout(), Hide)?;
+        Self::queue_command(Hide)?;
         Ok(())
     }
 
     pub fn show_cursor() -> Result<(), io::Error> {
-        queue!(stdout(), Show)?;
+        Self::queue_command(Show)?;
         Ok(())
     }
 
-    pub fn print(output: &str) -> Result<(), io::Error> {
-        queue!(stdout(), Print(output))?;
+    pub fn print<T: Display>(string: T) -> Result<(), io::Error> {
+        Self::queue_command(Print(string))?;
         Ok(())
     }
 
     pub fn flush() -> Result<(), io::Error> {
         stdout().flush()?;
+        Ok(())
+    }
+
+    fn queue_command<T: Command>(command: T) -> Result<(), io::Error> {
+        queue!(stdout(), command)?;
         Ok(())
     }
 }
