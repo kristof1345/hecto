@@ -1,4 +1,5 @@
-use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
+use crossterm::event::KeyCode;
+use crossterm::event::{read, Event, Event::Key, KeyEvent, KeyEventKind, KeyModifiers};
 use std::io;
 
 mod terminal;
@@ -7,14 +8,25 @@ use terminal::{Position, Size, Terminal};
 // globals
 const VERSION: &str = env!("CARGO_PKG_VERSION"); // gets the version name from cargo.toml
 
+#[derive(Copy, Clone, Default)]
+struct Location {
+    x: usize,
+    y: usize,
+}
+
+#[derive(Default)]
 pub struct Editor {
+    location: Location,
     should_quit: bool, // we don't have to declare that we want a mutatable field
 }
 
 impl Editor {
-    pub const fn default() -> Self {
-        Self { should_quit: false }
-    }
+    // pub const fn default() -> Self {
+    //     Self {
+    //         should_quit: false,
+    //         location: Location { x: 0, y: 0 },
+    //     }
+    // }
 
     pub fn run(&mut self) {
         Terminal::initialize().unwrap();
@@ -30,35 +42,80 @@ impl Editor {
                 break;
             }
             let event = read()?;
-            self.evaluate_events(&event);
+            self.evaluate_events(&event)?;
         }
         Ok(())
     }
 
-    fn evaluate_events(&mut self, event: &Event) {
+    fn evaluate_events(&mut self, event: &Event) -> Result<(), io::Error> {
         if let Key(KeyEvent {
-            code, modifiers, ..
+            code,
+            modifiers,
+            kind: KeyEventKind::Press,
+            ..
         }) = event
         {
             match code {
-                Char('q') if *modifiers == KeyModifiers::CONTROL => {
+                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
                     self.should_quit = true;
+                }
+                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
+                    self.move_point(*code)?;
                 }
                 _ => (),
             }
         }
+
+        Ok(())
+    }
+
+    fn move_point(&mut self, code: KeyCode) -> Result<(), io::Error> {
+        let Location { mut x, mut y } = self.location;
+        let Size { width, height } = Terminal::size()?;
+
+        match code {
+            KeyCode::Up => {
+                if y != 0 {
+                    y = y.saturating_sub(1);
+                }
+            }
+            KeyCode::Down => {
+                if y < height - 1 {
+                    y = y.saturating_add(1);
+                }
+            }
+            KeyCode::Left => {
+                if x != 0 {
+                    x = x.saturating_sub(1);
+                }
+            }
+            KeyCode::Right => {
+                if x < width - 1 {
+                    x = x.saturating_add(1);
+                }
+            }
+            _ => (),
+        }
+
+        self.location = Location { x, y };
+
+        Ok(())
     }
 
     fn refresh_screen(&self) -> Result<(), io::Error> {
-        Terminal::hide_cursor()?;
+        Terminal::hide_caret()?;
+        Terminal::move_caret_to(Position::default())?;
         if self.should_quit {
             Terminal::clear_screen()?;
             Terminal::print("Goodbye.\r\n")?;
         } else {
             Self::draw_rows()?;
-            Terminal::move_cursor_to(Position { x: 0, y: 0 })?;
+            Terminal::move_caret_to(Position {
+                col: self.location.x,
+                row: self.location.y,
+            })?;
         }
-        Terminal::show_cursor()?;
+        Terminal::show_caret()?;
         Terminal::flush()?;
         Ok(())
     }
@@ -67,9 +124,9 @@ impl Editor {
         let width = Terminal::size()?.width as usize;
         let name_and_version = format!("Hecto -- version {}", VERSION);
         let len = name_and_version.len();
-        let padding = ((width.saturating_sub(len)) / 2); // saturating_sub subtracts a number from a number without underflowing it
-        let spaces = " ".repeat(padding.satuating_sub(1));
-        Terminal::print(format!("~{padding}{name_and_version}").as_str())?;
+        let padding = (width.saturating_sub(len)) / 2; // saturating_sub subtracts a number from a number without underflowing it
+        let spaces = " ".repeat(padding.saturating_sub(1));
+        Terminal::print(format!("~{spaces}{name_and_version}").as_str())?;
         Ok(())
     }
 

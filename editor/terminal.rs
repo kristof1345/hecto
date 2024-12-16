@@ -8,14 +8,16 @@ use std::io::{self, stdout, Write};
 
 pub struct Terminal;
 
+#[derive(Copy, Clone)]
 pub struct Size {
     pub width: usize,
     pub height: usize,
 }
 
+#[derive(Copy, Clone, Default)]
 pub struct Position {
-    pub x: usize,
-    pub y: usize,
+    pub col: usize,
+    pub row: usize,
 }
 
 impl Terminal {
@@ -28,7 +30,7 @@ impl Terminal {
     pub fn initialize() -> Result<(), io::Error> {
         enable_raw_mode()?;
         Self::clear_screen()?;
-        Self::move_cursor_to(Position { x: 0, y: 0 })?;
+        // Self::move_cursor_to(Position { col: 0, row: 0 })?;
         Self::flush()?;
         Ok(())
     }
@@ -44,8 +46,8 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn move_cursor_to(position: Position) -> Result<(), io::Error> {
-        Self::queue_command(MoveTo(position.x as u16, position.y as u16))?;
+    pub fn move_caret_to(position: Position) -> Result<(), io::Error> {
+        Self::queue_command(MoveTo(position.col as u16, position.row as u16))?;
         Ok(())
     }
 
@@ -57,12 +59,12 @@ impl Terminal {
         Ok(Size { width, height })
     }
 
-    pub fn hide_cursor() -> Result<(), io::Error> {
+    pub fn hide_caret() -> Result<(), io::Error> {
         Self::queue_command(Hide)?;
         Ok(())
     }
 
-    pub fn show_cursor() -> Result<(), io::Error> {
+    pub fn show_caret() -> Result<(), io::Error> {
         Self::queue_command(Show)?;
         Ok(())
     }
