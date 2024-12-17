@@ -3,7 +3,7 @@ use crossterm::style::Print;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
 use crossterm::{queue, Command};
 
-use core::fmt::Display;
+// use core::fmt::Display;
 use std::io::{self, stdout, Write};
 
 pub struct Terminal;
@@ -69,7 +69,7 @@ impl Terminal {
         Ok(())
     }
 
-    pub fn print<T: Display>(string: T) -> Result<(), io::Error> {
+    pub fn print(string: &str) -> Result<(), io::Error> {
         Self::queue_command(Print(string))?;
         Ok(())
     }
