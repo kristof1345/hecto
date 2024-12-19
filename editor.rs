@@ -18,6 +18,7 @@ struct Location {
 pub struct Editor {
     location: Location,
     should_quit: bool, // we don't have to declare that we want a mutatable field
+    view: View,
 }
 
 impl Editor {
@@ -109,7 +110,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("Goodbye.\r\n")?;
         } else {
-            View::render()?;
+            self.view.render()?;
             Terminal::move_caret_to(Position {
                 col: self.location.x,
                 row: self.location.y,
