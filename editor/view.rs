@@ -14,27 +14,26 @@ pub struct View {
 
 impl View {
     pub fn render(&self) -> Result<(), io::Error> {
+        if self.buffer.is_empty() {
+            Self::render_welcome_screen()?;
+        } else {
+            self.render_buffer()?;
+        }
+
+        Ok(())
+    }
+
+    pub fn render_buffer(&self) -> Result<(), io::Error> {
         let Size { height, .. } = Terminal::size()?;
 
         for row in 0..height {
             Terminal::clear_line()?;
+
             if let Some(line) = self.buffer.lines.get(row) {
                 Terminal::print(line)?;
-                Terminal::print("\r\n")?;
-                continue;
-            }
-
-            if height / 3 == row {
-                Self::draw_welcome_message()?;
             } else {
                 Self::draw_empty_row()?;
             }
-
-            // if row == 0 {
-            //     Self::draw_hello_world()?;
-            // } else {
-            //     Self::draw_empty_row()?;
-            // }
 
             if row.saturating_add(1) < height {
                 // saturating_add adds a number to a number without overflowing it
@@ -45,10 +44,32 @@ impl View {
         Ok(())
     }
 
-    // fn draw_hello_world() -> Result<(), io::Error> {
-    //     Terminal::print("Hello, world!")?;
-    //     Ok(())
-    // }
+    pub fn render_welcome_screen() -> Result<(), io::Error> {
+        let Size { height, .. } = Terminal::size()?;
+
+        for row in 0..height {
+            Terminal::clear_line()?;
+
+            if height / 3 == row {
+                Self::draw_welcome_message()?;
+            } else {
+                Self::draw_empty_row()?;
+            }
+
+            if row.saturating_add(1) < height {
+                // saturating_add adds a number to a number without overflowing it
+                Terminal::print("\r\n")?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn load(&mut self, filename: &String) {
+        if let Ok(lines) = Buffer::load(filename) {
+            self.buffer = lines;
+        }
+    }
 
     fn draw_welcome_message() -> Result<(), io::Error> {
         let width = Terminal::size()?.width as usize;

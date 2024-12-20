@@ -36,7 +36,18 @@ impl Editor {
         result.unwrap();
     }
 
+    fn read_args(&mut self) -> Result<(), io::Error> {
+        let args: Vec<String> = std::env::args().collect();
+        if let Some(first_arg) = args.get(1) {
+            // do someting with filename
+            self.view.load(first_arg);
+        }
+
+        Ok(())
+    }
+
     fn repl(&mut self) -> Result<(), io::Error> {
+        self.read_args().unwrap();
         loop {
             self.refresh_screen()?;
             if self.should_quit {
