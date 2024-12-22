@@ -8,7 +8,7 @@ use std::io::{self, stdout, Write};
 
 pub struct Terminal;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct Size {
     pub width: usize,
     pub height: usize,
@@ -37,7 +37,7 @@ impl Terminal {
 
     pub fn clear_screen() -> Result<(), io::Error> {
         Self::queue_command(Clear(ClearType::All))?;
-        // queue!(stdout(), Clear(ClearType::Purge)?; // don't delete - clears history - only commented it out for debug purposes
+        Self::queue_command(Clear(ClearType::Purge))?; // don't delete - clears history - only commented it out for debug purposes
         Ok(())
     }
 

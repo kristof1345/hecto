@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
-use crossterm::event::{read, Event, Event::Key, KeyEvent, KeyEventKind, KeyModifiers};
-use std::io;
+use crossterm::event::{read, Event, KeyEvent, KeyEventKind, KeyModifiers};
 
+use std::io;
 mod terminal;
 use terminal::{Position, Size, Terminal};
 
@@ -22,13 +22,6 @@ pub struct Editor {
 }
 
 impl Editor {
-    // pub const fn default() -> Self {
-    //     Self {
-    //         should_quit: false,
-    //         location: Location { x: 0, y: 0 },
-    //     }
-    // }
-
     pub fn run(&mut self) {
         Terminal::initialize().unwrap();
         let result = self.repl();
@@ -54,28 +47,34 @@ impl Editor {
                 break;
             }
             let event = read()?;
-            self.evaluate_events(&event)?;
+            self.evaluate_events(event)?;
         }
         Ok(())
     }
 
-    fn evaluate_events(&mut self, event: &Event) -> Result<(), io::Error> {
-        if let Key(KeyEvent {
-            code,
-            modifiers,
-            kind: KeyEventKind::Press,
-            ..
-        }) = event
-        {
-            match code {
-                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
+    fn evaluate_events(&mut self, event: Event) -> Result<(), io::Error> {
+        match event {
+            Event::Key(KeyEvent {
+                code,
+                kind: KeyEventKind::Press,
+                modifiers,
+                ..
+            }) => match (code, modifiers) {
+                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
-                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                    self.move_point(*code)?;
+                (KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right, _) => {
+                    self.move_point(code)?;
                 }
-                _ => (),
+                _ => {}
+            },
+            Event::Resize(width_u16, height_u16) => {
+                let width = width_u16 as usize;
+                let height = height_u16 as usize;
+
+                self.view.resize(Size { height, width })
             }
+            _ => {}
         }
 
         Ok(())
@@ -114,7 +113,7 @@ impl Editor {
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), io::Error> {
+    fn refresh_screen(&mut self) -> Result<(), io::Error> {
         Terminal::hide_caret()?;
         Terminal::move_caret_to(Position::default())?;
         if self.should_quit {
