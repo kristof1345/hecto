@@ -2,6 +2,7 @@ use crossterm::event::KeyCode;
 use crossterm::event::{read, Event, KeyEvent, KeyEventKind, KeyModifiers};
 
 use std::io;
+use std::panic::{set_hook, take_hook};
 mod terminal;
 use terminal::{Position, Size, Terminal};
 
@@ -22,37 +23,46 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn run(&mut self) {
-        Terminal::initialize().unwrap();
-        let result = self.repl();
-        Terminal::terminate().unwrap();
-        result.unwrap();
-    }
+    pub fn new() -> Result<Self, io::Error> {
+        let current_hook = take_hook();
+        set_hook(Box::new(move |panic_info| {
+            let _ = Terminal::terminate();
+            current_hook(panic_info);
+        }));
 
-    fn read_args(&mut self) -> Result<(), io::Error> {
+        Terminal::initialize()?;
+        let mut view = View::default();
         let args: Vec<String> = std::env::args().collect();
         if let Some(first_arg) = args.get(1) {
             // do someting with filename
-            self.view.load(first_arg);
+            view.load(first_arg);
         }
-
-        Ok(())
+        Ok(Self {
+            location: Location::default(),
+            should_quit: false,
+            view,
+        })
     }
 
-    fn repl(&mut self) -> Result<(), io::Error> {
-        self.read_args().unwrap();
+    pub fn run(&mut self) {
         loop {
-            self.refresh_screen()?;
+            self.refresh_screen();
             if self.should_quit {
                 break;
             }
-            let event = read()?;
-            self.evaluate_events(event)?;
+            match read() {
+                Ok(event) => self.evaluate_events(event),
+                Err(error) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {error:?}");
+                    }
+                }
+            }
         }
-        Ok(())
     }
 
-    fn evaluate_events(&mut self, event: Event) -> Result<(), io::Error> {
+    fn evaluate_events(&mut self, event: Event) {
         match event {
             Event::Key(KeyEvent {
                 code,
@@ -64,7 +74,7 @@ impl Editor {
                     self.should_quit = true;
                 }
                 (KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right, _) => {
-                    self.move_point(code)?;
+                    self.move_point(code);
                 }
                 _ => {}
             },
@@ -76,13 +86,11 @@ impl Editor {
             }
             _ => {}
         }
-
-        Ok(())
     }
 
-    fn move_point(&mut self, code: KeyCode) -> Result<(), io::Error> {
+    fn move_point(&mut self, code: KeyCode) {
         let Location { mut x, mut y } = self.location;
-        let Size { width, height } = Terminal::size()?;
+        let Size { width, height } = Terminal::size().unwrap_or_default();
 
         match code {
             KeyCode::Up => {
@@ -109,25 +117,25 @@ impl Editor {
         }
 
         self.location = Location { x, y };
-
-        Ok(())
     }
 
-    fn refresh_screen(&mut self) -> Result<(), io::Error> {
-        Terminal::hide_caret()?;
-        Terminal::move_caret_to(Position::default())?;
+    fn refresh_screen(&mut self) {
+        let _ = Terminal::hide_caret();
+        self.view.render();
+        let _ = Terminal::move_caret_to(Position {
+            col: self.location.x,
+            row: self.location.y,
+        });
+        let _ = Terminal::show_caret();
+        let _ = Terminal::flush();
+    }
+}
+
+impl Drop for Editor {
+    fn drop(&mut self) {
+        let _ = Terminal::terminate();
         if self.should_quit {
-            Terminal::clear_screen()?;
-            Terminal::print("Goodbye.\r\n")?;
-        } else {
-            self.view.render()?;
-            Terminal::move_caret_to(Position {
-                col: self.location.x,
-                row: self.location.y,
-            })?;
+            let _ = Terminal::print("Goodbye.\r\n");
         }
-        Terminal::show_caret()?;
-        Terminal::flush()?;
-        Ok(())
     }
 }

@@ -1,6 +1,9 @@
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen,
+    LeaveAlternateScreen,
+};
 use crossterm::{queue, Command};
 
 // use core::fmt::Display;
@@ -22,6 +25,8 @@ pub struct Position {
 
 impl Terminal {
     pub fn terminate() -> Result<(), io::Error> {
+        Self::leave_alternate_screen()?;
+        Self::show_caret()?;
         Self::flush()?;
         disable_raw_mode()?;
         Ok(())
@@ -29,15 +34,26 @@ impl Terminal {
 
     pub fn initialize() -> Result<(), io::Error> {
         enable_raw_mode()?;
+        Self::enter_alternate_screen()?;
         Self::clear_screen()?;
         // Self::move_cursor_to(Position { col: 0, row: 0 })?;
         Self::flush()?;
         Ok(())
     }
 
+    pub fn enter_alternate_screen() -> Result<(), io::Error> {
+        Self::queue_command(EnterAlternateScreen)?;
+        Ok(())
+    }
+
+    pub fn leave_alternate_screen() -> Result<(), io::Error> {
+        Self::queue_command(LeaveAlternateScreen)?;
+        Ok(())
+    }
+
     pub fn clear_screen() -> Result<(), io::Error> {
         Self::queue_command(Clear(ClearType::All))?;
-        Self::queue_command(Clear(ClearType::Purge))?; // don't delete - clears history - only commented it out for debug purposes
+        // Self::queue_command(Clear(ClearType::Purge))?; // don't delete - clears history - only commented it out for debug purposes
         Ok(())
     }
 
@@ -71,6 +87,13 @@ impl Terminal {
 
     pub fn print(string: &str) -> Result<(), io::Error> {
         Self::queue_command(Print(string))?;
+        Ok(())
+    }
+
+    pub fn print_row(row: usize, line: &str) -> Result<(), io::Error> {
+        Self::move_caret_to(Position { row, col: 0 })?;
+        Self::clear_line()?;
+        Self::print(line)?;
         Ok(())
     }
 
