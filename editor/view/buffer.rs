@@ -2,9 +2,11 @@ use std::fs;
 use std::io;
 use std::vec::Vec;
 
+use super::line::Line;
+
 #[derive(Default)]
 pub struct Buffer {
-    pub lines: Vec<String>,
+    pub lines: Vec<Line>,
 }
 
 impl Buffer {
@@ -13,7 +15,7 @@ impl Buffer {
         let mut lines = Vec::new();
         // let lines = vec![file_contents.to_string()];
         for line in file_contents.lines() {
-            lines.push(String::from(line));
+            lines.push(Line::from(line));
         }
         Ok(Self { lines })
     }
