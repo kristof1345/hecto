@@ -81,12 +81,6 @@ impl Editor {
                 }
             }
         }
-        // } else {
-        //     #[cfg(debug_assertions)]
-        //     {
-        //         panic!("Recieved and discarded an unsupported event.");
-        //     }
-        // }
     }
 
     fn refresh_screen(&mut self) {
