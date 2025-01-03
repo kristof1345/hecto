@@ -2,6 +2,7 @@ use super::{
     editorcommand::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
 };
+use std::cmp::min;
 use std::str;
 
 mod buffer;
@@ -11,6 +12,8 @@ mod location;
 use location::Location;
 
 mod line;
+
+use self::line::Line;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION"); // gets the version name from cargo.toml
 
@@ -68,7 +71,7 @@ impl View {
 
     fn move_text_location(&mut self, direction: &Direction) {
         let Location { mut x, mut y } = self.location;
-        // let Size { width, height } = self.size;
+        // let Size { height, .. } = self.size;
 
         match direction {
             Direction::Up => {
@@ -78,12 +81,33 @@ impl View {
                 y = y.saturating_add(1);
             }
             Direction::Left => {
-                x = x.saturating_sub(1);
+                if x > 0 {
+                    x -= 1;
+                } else if y > 0 {
+                    y -= 1;
+                    x = self.buffer.lines.get(y).map_or(0, Line::length);
+                }
             }
             Direction::Right => {
-                x = x.saturating_add(1);
+                let width = self.buffer.lines.get(y).map_or(0, Line::length);
+                if x < width {
+                    x += 1;
+                } else {
+                    y = y.saturating_add(1);
+                    x = 0;
+                }
             }
         }
+
+        // snap cursor to end of line
+        x = self
+            .buffer
+            .lines
+            .get(y)
+            .map_or(0, |line| min(x, line.length()));
+
+        // snap cursor to last line
+        y = min(y, self.buffer.lines.len());
 
         self.location = Location { x, y };
         self.scroll_location_into_view();
