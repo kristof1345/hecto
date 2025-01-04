@@ -1,5 +1,7 @@
 use std::{cmp, ops::Range};
 
+use unicode_segmentation::UnicodeSegmentation;
+
 pub struct Line {
     string: String,
 }
@@ -18,6 +20,7 @@ impl Line {
     }
 
     pub fn length(&self) -> usize {
-        self.string.len()
+        let grapehemed_str = self.string.graphemes(true).collect::<Vec<&str>>();
+        grapehemed_str.len()
     }
 }
