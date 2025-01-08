@@ -104,7 +104,7 @@ impl View {
             .buffer
             .lines
             .get(y)
-            .map_or(0, |line| min(x, line.length()));
+            .map_or(0, |line| min(x, Line::length(line)));
 
         // snap cursor to last line
         y = min(y, self.buffer.lines.len());

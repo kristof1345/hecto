@@ -14,13 +14,22 @@ impl Line {
     }
 
     pub fn get(&self, range: Range<usize>) -> String {
-        let start = range.start;
-        let end = cmp::min(range.end, self.string.len());
-        self.string.get(start..end).unwrap_or_default().to_string()
+        let graphemes: Vec<&str> = self.string.graphemes(true).collect();
+        let len = graphemes.len();
+
+        // Clamp the range to ensure it's within bounds
+        let start = range.start.min(len); // Prevent start from exceeding the length
+        let end = range.end.min(len); // Prevent end from exceeding the length
+
+        if start >= end {
+            // If the range is invalid (start >= end), return an empty string
+            return String::new();
+        }
+
+        graphemes[start..end].concat()
     }
 
     pub fn length(&self) -> usize {
-        let grapehemed_str = self.string.graphemes(true).collect::<Vec<&str>>();
-        grapehemed_str.len()
+        self.string.graphemes(true).count()
     }
 }
