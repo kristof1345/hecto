@@ -1,16 +1,48 @@
 use std::{cmp, ops::Range};
 
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::UnicodeWidthStr;
+
+enum GraphemeWidth {
+    Half,
+    Full,
+}
+
+struct TextFragment {
+    grapheme: String,
+    rendered_width: GraphemeWidth,
+    replacement: Option<char>,
+}
 
 pub struct Line {
-    string: String,
+    fragments: Vec<TextFragment>,
 }
 
 impl Line {
     pub fn from(text: &str) -> Self {
-        Self {
-            string: String::from(text),
-        }
+        let fragments = text
+            .graphemes(true)
+            .map(|grapheme| {
+                let width = grapheme.widht();
+                let rendered_width = match width {
+                    0 | 1 => GraphemeWidth::Hald,
+                    _ => GraphemeWidth::Full,
+                };
+
+                let replacement = match width {
+                    0 => Some('.'),
+                    _ => None,
+                };
+
+                TextFragment {
+                    grapheme,
+                    rendered_width,
+                    replacement,
+                }
+            })
+            .collect();
+
+        Self { fragments }
     }
 
     pub fn get(&self, range: Range<usize>) -> String {
